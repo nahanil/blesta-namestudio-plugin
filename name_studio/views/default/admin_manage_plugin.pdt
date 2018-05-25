@@ -1,0 +1,113 @@
+<?php
+  $this->Widget->clear();
+  $this->Widget->create($this->_('NameStudio.admin_index.box_title', true));
+  $this->Form->create();
+?>
+<div class="inner">
+
+  <div class="title_row first">
+    <h3><?php $this->_('NameStudio.admin_index.api_key_title');?></h3>
+  </div>
+
+  <div class="pad">
+    <p><?php $this->_('NameStudio.admin_index.api_key_desc') ?></p>
+    
+    <ul>
+        <li>
+        <?php
+            $this->Form->label($this->_('NameStudio.admin_index.label_api_key'), 'api_key');
+            $this->Form->fieldText('api_key', $this->Html->ifSet($api_key), ['id' => 'api_key']);
+        ?>
+        </li>
+    </ul>
+  </div>
+
+
+  <div class="title_row">
+    <h3><?php $this->_('NameStudio.admin_index.options_title');?></h3>
+  </div>
+
+  <div class="pad">
+    <ul>
+        <li>
+        <?php $this->Form->label($this->_('NameStudio.admin_index.enabled_tlds', true)) ?>
+        <?php
+            foreach($available_tlds AS $tld) {
+                $this->Form->fieldCheckbox('tld[]', $tld, in_array($tld, $enabled_tlds), ['id' => 'tld_'.$tld]);
+                $this->Form->label(".".$tld, 'tld_'.$tld, ['class' => "inline"]);
+            }
+        ?>
+        </li>
+
+        <li>
+        <?php
+            $options = [];
+            for ($i=2; $i <= 63; $i++) {  
+              $options[$i] = $i;  
+            }
+            $this->Form->label($this->_("NameStudio.admin_index.max_length", true), 'max_length');
+            $this->Form->fieldSelect('max_length', $options, $max_length, ['id' => 'max_length']);
+        ?>
+        </li>
+
+        <li>
+        <?php
+            $options = [];
+            for ($i=1; $i <= 100; $i++) {  
+              $options[$i] = $i;  
+            }
+            $this->Form->label($this->_("NameStudio.admin_index.max_results", true), 'max_results');
+            $this->Form->fieldSelect('max_results', $options, $max_results, ['id' => 'max_results']);
+        ?>
+        </li>
+
+        <li>
+        <?php
+            $options = [
+              'auto' => $this->_("NameStudio.admin_index.option_auto", true),
+              'yes'  => $this->_("NameStudio.admin_index.option_yes", true),
+              'no'   => $this->_("NameStudio.admin_index.option_no", true),
+            ];
+            $this->Form->label($this->_("NameStudio.admin_index.use_dashes", true), 'use_dashes');
+            $this->Form->fieldSelect('use_dashes', $options, $use_dashes, ['id' => 'use_dashes']);
+        ?>
+        </li>
+
+        <li>
+        <?php
+            $this->Form->fieldCheckbox('send_ip', null, ($send_ip == "yes"), ['id' => 'send_ip']);
+            $this->Form->label($this->_("NameStudio.admin_index.send_ip", true), 'send_ip', ['class' => "inline"])
+        ?>
+        </li>
+
+
+        <li>
+        <?php
+            $this->Form->fieldCheckbox('use_numbers', null, ($use_numbers == "yes"), ['id' => 'use_numbers']);
+            $this->Form->label($this->_("NameStudio.admin_index.use_numbers", true), 'use_numbers', ['class' => "inline"])
+        ?>
+        </li>
+
+        <li>
+        <?php
+            $this->Form->fieldCheckbox('filter_sensitive', null, ($filter_sensitive == "yes"), ['id' => 'filter_sensitive']);
+            $this->Form->label($this->_("NameStudio.admin_index.filter_sensitive", true), 'filter_sensitive', ['class' => "inline"])
+        ?>
+        </li>
+
+    </ul>
+  </div>
+
+  <div class="button_row">
+    <?php
+    $this->Form->fieldSubmit('save', $this->_('NameStudio.admin_index.btn_submit', true), ['class' => 'btn btn-primary pull-right']);
+    ?>
+  </div>
+</div>
+
+
+
+<?php
+  $this->Form->end();
+  $this->Widget->end();
+?>
