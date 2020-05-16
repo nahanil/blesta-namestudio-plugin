@@ -110,6 +110,11 @@ class NameStudioPlugin extends Plugin {
             return;
         }
 
+        // Don't run for domain transfers
+        if (isset($_POST['transfer']) && $_POST['transfer']) {
+            return;
+        }
+
         $tlds = !empty($_POST['tlds']) ? $_POST['tlds'] : false;
 
         $view = new View("preconfig_form", "default");
