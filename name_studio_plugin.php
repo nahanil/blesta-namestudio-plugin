@@ -124,8 +124,12 @@ class NameStudioPlugin extends Plugin {
         $view->set('tlds', $tlds);
         $view->set('orderform', NameStudioUtil::getOrderFormLabel());
 
-        return $event->setReturnVal([
-            'body_end' => [ $view->fetch() ]
-        ]);
+        // Don't clobber `body_end`
+        $rval = $event->getReturnVal();
+        if (!isset($rval['body_end'])) {
+            $rval['body_end'] = [];
+        }
+        $rval['body_end'][] = $view->fetch();
+        return $event->setReturnVal($rval);
     }
 }
