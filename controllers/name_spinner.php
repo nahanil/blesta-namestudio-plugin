@@ -1,120 +1,125 @@
 <?php
 
-class NameSpinner extends NameStudioController {
-    
-    public function index() {
-      $this->sld = !empty($this->post['searchdomain']) 
-              ? NameStudioUtil::getSld($this->post['searchdomain']) 
-              : false;
-      
-      $this->order_form_name = !empty($this->post['orderform']) ? $this->post['orderform'] : false;
-      
-      // Verify we have the data we need
-      if (empty($this->post) || !$this->sld || !$this->order_form_name) {
-          //header
-          return $this->renderJson([
-            'ok'  => false,
-            'error' => [
-                'code' => 400,
-                'message' => "Invalid request"
-            ]
-          ]);
-      }
+/**
+ * Class NameSpinner
+ */
+class NameSpinner extends NameStudioController
+{
+    public function index()
+    {
+        $this->sld = !empty($this->post['searchdomain'])
+            ? NameStudioUtil::getSld($this->post['searchdomain'])
+            : false;
 
-      // Suggest default TLDs if the user didn't select one in the order form
-      $tlds = !empty($this->post['tlds'])
-              ? array_merge($this->post['tlds'], $this->settings->enabled_tlds)
-              : $this->settings->enabled_tlds;
+        $this->order_form_name = !empty($this->post['orderform']) ? $this->post['orderform'] : false;
 
-      // Perform the API request
-      $api = new VerisignNameStudio($this->settings->api_key);
-      $response = $api->suggest($this->sld, [
-          'tlds' => implode(",", $tlds),
-          'sensitive-content-filter' => $this->settings->filter_sensitive,
-          'use-numbers' => $this->settings->use_numbers,
-          'use-dashes'  => $this->settings->use_dashes,
-          'max-length'  => $this->settings->max_length,
-          'max-results' => $this->settings->max_results,
-          'ip-address'  => $this->settings->send_ip ? $_SERVER['REMOTE_ADDR'] : null,
-          // TODO:
-          //'use-idns'    => true,
-          //'lang'        => "eng",  // eng/spa/ita/jpn/tur/chi/ger/por/fre/kor/vie/dut
-          //'lat-lng'     => null,   // Optional
-          //'include-registered' => false,
-          //'include-suggestion-type'  => false,
-      ]);
+        // Verify we have the data we need
+        if (empty($this->post) || !$this->sld || !$this->order_form_name) {
+            //header
+            return $this->renderJson([
+                'ok'  => false,
+                'error' => [
+                    'code' => 400,
+                    'message' => "Invalid request"
+                ]
+            ]);
+        }
 
-      // Check if the API request was successful
-      if (!$response->ok()) {
-          return $this->renderJson([
-              "ok" => false,
-              "error" => $response->error()
-          ]);
-      }
-      
-      // Don't include suggestions that match what Blesta already searched for
-      $blesta_searched = [];
-      if (!empty($this->post['tlds'])) {
-          foreach ($this->post['tlds'] AS $tld) {
-              $blesta_searched[] = $this->sld . $tld;
-          }
-      }
+        // Suggest default TLDs if the user didn't select one in the order form
+        $tlds = !empty($this->post['tlds'])
+            ? array_merge($this->post['tlds'], $this->settings->enabled_tlds)
+            : $this->settings->enabled_tlds;
 
-      // Format our response
-      $result = [];
-      foreach ($response->response()->results AS $el) {
-          // Don't suggest names that were in the main Blesta search
-          if (in_array(isset($el->punyName) ? strtolower($el->punyName) : strtolower($el->name), $blesta_searched)) {
-              continue;
-          }
-          // Don't suggest unavailable names
-          if ($el->availability != "available") {
-              continue;
-          }
+        // Perform the API request
+        # TODO: This _could_ be cached for some short period of time..
+        $api = new VerisignNameStudio($this->settings->api_key);
+        $reply = $api->suggest($this->sld, [
+            'tlds' => implode(",", $tlds),
+            'sensitive-content-filter' => $this->settings->filter_sensitive,
+            'use-numbers' => $this->settings->use_numbers,
+            'use-dashes'  => $this->settings->use_dashes,
+            'max-length'  => $this->settings->max_length,
+            'max-results' => $this->settings->max_results,
+            'ip-address'  => $this->settings->send_ip ? $_SERVER['REMOTE_ADDR'] : null,
+            // TODO:
+            //'use-idns'    => true,
+            //'lang'        => "eng",  // eng/spa/ita/jpn/tur/chi/ger/por/fre/kor/vie/dut
+            //'lat-lng'     => null,   // Optional
+            //'include-registered' => false,
+            //'include-suggestion-type'  => false,
+        ]);
 
-          // Format data for response
-          if (empty($tlds)) {
-              return $this->renderJson([
-                  "ok" => false,
-                  "message" => "Couldn't find any domain pricing for specified order form"
-              ]);
-          }
+        // Check if the API request was successful
+        if (!$reply->ok()) {
+            return $this->renderJson([
+                "ok" => false,
+                "error" => $response->error()
+            ]);
+        }
 
-          // Punycode handling is fkn ugly :(
-          $result[] = [
-              'name'        => strtolower(isset($el->punyName) ? $el->punyName : $el->name),
-              'displayName' => $el->name,
-              'available'   => ($el->availability == "available"),
-              'terms'       => $this->getPricingTermsForDomain($el),
-          ];
-      }
+        $response = $reply->response();
 
-      // Send response
-      return $this->renderJson([
-          "ok"     => true,
-          "result" => $result
-      ]);
+        // Don't include suggestions that match what Blesta already searched for
+        $blesta_searched = [];
+        if (!empty($this->post['tlds'])) {
+            foreach ($this->post['tlds'] as $tld) {
+                $blesta_searched[] = $this->sld . $tld;
+            }
+        }
+
+        // Format our response
+        $result = [];
+        foreach ($response->results as $suggestion) {
+            // The API sometimes returns 'punyName' for unicode domain/tlds
+            $name = isset($suggestion->punyName)
+                ? strtolower($suggestion->punyName)
+                : strtolower($suggestion->name);
+
+            // Don't suggest names that were in the main Blesta search
+            if (in_array($name, $blesta_searched)) {
+                continue;
+            }
+
+            // Don't suggest unavailable names
+            if ($suggestion->availability != "available") {
+                continue;
+            }
+
+            // Punycode handling is fkn ugly :(
+            $result[] = [
+                'name'        => $name,
+                'displayName' => $suggestion->name,
+                'available'   => ($suggestion->availability == "available"),
+                'terms'       => $this->getPricingTermsForDomain($name),
+            ];
+        }
+
+        // Send response
+        $order_form = $this->getOrderForm();
+        return $this->renderJson([
+            'ok'      => true,
+            'results' => $result,
+            'groupId' => $order_form->meta->domain_group
+        ]);
     }
 
-    private function getPricingTerms() {
+    private function getPricingTerms()
+    {
         if (isset($this->pricing_terms)) {
             return $this->pricing_terms;
         }
-        
+
         $tlds = $this->getTldsForForm();
 
         // Load currency
-        $this->cart_name =  Configure::get('Blesta.company_id') . '-' . $this->order_form_name;
-        $this->components(['SessionCart' => [$this->cart_name, $this->Session]]);
+        $cart_name =  Configure::get('Blesta.company_id') . '-' . $this->order_form_name;
+        $this->components(['SessionCart' => [$cart_name, $this->Session]]);
         $currency = $this->SessionCart->getData('currency');
-        
+
         $pricing = [];
-        // This *now* loads all the order forms available TLDs' pricing... 
-        // Maybe we should instead first get a list of each unique TLD in the list returned from API
-        //foreach($this->settings->enabled_tlds AS $tld) {
-        foreach(array_keys($tlds) AS $tld) {
+        foreach (array_keys($tlds) as $tld) {
             //if (!isset($tlds["." . $tld])) { continue; }
-            $pack = $tlds[$tld];////$tlds["." . $tld];
+            $pack = $tlds[$tld]; ////$tlds["." . $tld];
 
             if ($pack) {
                 $pack[0] = $this->updatePackagePricing($pack[0], $currency);
@@ -129,16 +134,16 @@ class NameSpinner extends NameStudioController {
         return $pricing;
     }
 
-    protected function getPricingTermsForDomain($el) {
-        $domain = isset($el->punyName) ? $el->punyName : $el->name;
+    protected function getPricingTermsForDomain($domain)
+    {
         $periods = $this->getPricingPeriods();
-        $terms = $this->getPricingTerms();
-        
+        $terms   = $this->getPricingTerms();
+
         // Get the TLD
         $tld = NameStudioUtil::getTld($domain, true);
 
         if (!isset($terms[$tld])) {
-          return null;  
+            return null;
         }
 
         $pack = $terms[$tld];
@@ -147,37 +152,85 @@ class NameSpinner extends NameStudioController {
         foreach ($pack->package->pricing as $price) {
             $prices[] = [
                 $price->id,
-                Language::_('Domain.lookup.term', true, $price->term, ($price->term == 1 ? $this->Html->ifSet($periods[$price->period]) : $this->Html->ifSet($periods[$price->period . '_plural'])), $this->CurrencyFormat->format($price->price, $price->currency))
+                Language::_(
+                    'Domain.lookup.term',
+                    true,
+                    $price->term,
+                    (
+                        $price->term == 1
+                            ? $this->Html->ifSet($periods[$price->period])
+                            : $this->Html->ifSet($periods[$price->period . '_plural'])
+                    ),
+                    $this->CurrencyFormat->format($price->price, $price->currency)
+                )
             ];
         }
 
         return $prices;
     }
 
-    private function getPricingPeriods() {
+    private function getPricingPeriods()
+    {
         if (isset($this->pricingPeriods)) {
             return $this->pricingPeriods;
         }
-        
+
         if (!isset($this->Packages)) {
             Loader::loadModels($this, ['Packages']);
         }
 
         // Set language for periods
         $periods = $this->Packages->getPricingPeriods();
-        foreach ($this->Packages->getPricingPeriods(true) as $period => $lang) {
+        foreach ($this->Packages->getPricingPeriods(true) AS $period => $lang) {
             $periods[$period . '_plural'] = $lang;
         }
-        
+
         $this->pricingPeriods = $periods;
         return $periods;
     }
 
-    private function getTldsForForm() {
+    private function getOrderForm()
+    {
+        if (isset($this->_order_form)) {
+            return $this->_order_form;
+        }
+
+        $order_form = $this->Record->select()
+            ->from("order_forms")
+            ->where("company_id", "=", Configure::get('Blesta.company_id'))
+            ->where("label", "=", $this->order_form_name)
+            ->limit(1)
+            ->fetch();
+
+        if (!$order_form) {
+            return;
+        }
+
+        // Load order form meta
+        $meta_rows = $this->Record->select()
+        ->from("order_form_meta")
+        ->where("order_form_id", "=", $order_form->id)
+        ->fetchAll();
+
+        $order_form->meta = new stdClass;
+        foreach ($meta_rows as $row) {
+            $order_form->meta->{$row->key} = $row->value;
+        }
+
+        $this->_order_form = $order_form;
+        return $this->_order_form;
+    }
+
+    /**
+     * @todo Don't load _all_ available TLDs, only those that have suggestions
+     * @return void
+     */
+    private function getTldsForForm()
+    {
         if (isset($this->tlds)) {
             return $this->tlds;
         }
-        
+
         if (!isset($this->Record)) {
             Loader::loadModels($this, ['Record']);
         }
@@ -187,34 +240,20 @@ class NameSpinner extends NameStudioController {
         }
 
         // Load order form details
-        $order_form = $this->Record->select()
-            ->from("order_forms")
-            ->where("company_id", "=", Configure::get('Blesta.company_id'))
-            ->where("label", "=", $this->order_form_name)
-            ->limit(1)
-            ->fetch();
+        $order_form = $this->getOrderForm();
 
-        if (!$order_form) { return null; }
-
-        // Load order form meta
-        $meta_rows = $this->Record->select()
-            ->from("order_form_meta")
-            ->where("order_form_id", "=", $order_form->id)
-            ->fetchAll();
-
-        $meta = [];
-        foreach ($meta_rows AS $row) {
-            $meta[$row->key] = $row->value;
+        if (!$order_form) {
+            return null;
         }
 
         $tlds = [];
 
         $group = new stdClass();
         $group->order_form_id = $order_form->id;
-        $group->package_group_id = $meta['domain_group'];
+        $group->package_group_id = $order_form->meta->domain_group;
 
         // Fetch all packages for this group
-        $packages[$group->package_group_id] 
+        $packages[$group->package_group_id]
             = $this->Packages->getAllPackagesByGroup($group->package_group_id);
 
         foreach ($packages[$group->package_group_id] as $package) {
@@ -236,8 +275,8 @@ class NameSpinner extends NameStudioController {
         // This aids in package pricing being determined properly by TLD comparison
         array_multisort(
             array_map(
-                function($tld) {
-                   return strlen($tld);
+                function ($tld) {
+                    return strlen($tld);
                 },
                 array_keys($tlds)
             ),
@@ -309,5 +348,4 @@ class NameSpinner extends NameStudioController {
         $package->pricing = array_values($all_pricing);
         return $package;
     }
-
 }

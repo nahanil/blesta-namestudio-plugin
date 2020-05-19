@@ -1,21 +1,13 @@
 <?php
 
 /**
- * 
- * ## TODO List ##
- * [BUGS]
- * 
- * [NICE TO HAVE]
+ *  Blesta Name Studio domain suggestion plugin
+ *  
+ * @todo
+ *   [NICE TO HAVE]
  *   - Confirm API Key is valid on settings change in /admin by making test request
- *   - Extract API classes to own project
- *   - Tidy up NameSpinnerController
- *   - Maybe rename 'enabled_tlds' setting to 'default_tlds'
- *     and append these to the end of a list of tlds to use when
- *     making API call which is something like unique(searched_domains.tld)
- *   - Some very basic kind of documentation perhaps?
- *
+ *   - Tidy up NameSpinnerController (most of it can probably be gutted and moved to ./models. Fat controllers smell)
  **/
-
 class NameStudioPlugin extends Plugin {
 
     public function __construct() {

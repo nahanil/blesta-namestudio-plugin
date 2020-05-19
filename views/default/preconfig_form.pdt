@@ -1,82 +1,83 @@
 <?php
-  $this->Form->create('/client/plugin/name_studio/name_spinner/', [ 'id' => "form_namestudio" ]);
-  $this->Form->fieldHidden('searchdomain', $searchdomain);
-  $this->Form->fieldHidden('orderform', $orderform);
-
-  if (!empty($tlds)) {
-    foreach ($tlds AS $tld) {
-      $this->Form->fieldHidden('tlds[]', $tld);
+    // Create a 'hidden' form
+    $this->Form->create('/client/plugin/name_studio/name_spinner/', ['id' => "form_namestudio"]);
+    $this->Form->fieldHidden('searchdomain', $searchdomain);
+    $this->Form->fieldHidden('orderform', $orderform);
+    if (!empty($tlds)) {
+        foreach ($tlds as $tld) {
+            $this->Form->fieldHidden('tlds[]', $tld);
+        }
     }
-  }
-
-  $this->Form->end();
+    $this->Form->end();
 ?>
 
 <script type="text/html" id="name_studio_tpl">
-<div class="name_studio_suggestions">
-    <h3><?php $this->_('NameStudio.client.suggestion_title') ?></h3>
-    <div class="well well-sm well-order domains name_studio_suggestions">
-        <div class="table-responsive">
-            <table class="table table-curved">
-                <thead>
-                    <tr>
-                        <th></th>
-                        <th><?php $this->_('Domain.lookup.domains_domain_name') ?></th>
-                        <th><?php $this->_('Domain.lookup.domains_status') ?></th>
-                        <th><?php $this->_('Domain.lookup.domains_term') ?></th>
-                    </tr>
-                </thead>
-                <tbody class="suggestions">
-                    <!-- Suggestions to be inserted here -->
-                </tbody>
-            </table>
+    <div class="name_studio_suggestions">
+        <h3><?php $this->_('NameStudio.client.suggestion_title') ?></h3>
+        <div class="well well-sm well-order domains name_studio_suggestions">
+            <div class="table-responsive">
+                <table class="table table-curved">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th><?php $this->_('Domain.lookup.domains_domain_name') ?></th>
+                            <th><?php $this->_('Domain.lookup.domains_status') ?></th>
+                            <th><?php $this->_('Domain.lookup.domains_term') ?></th>
+                        </tr>
+                    </thead>
+                    <tbody class="suggestions">
+                        <!-- Suggestions to be inserted here -->
+                    </tbody>
+                </table>
+            </div>
         </div>
+        <button type="submit" class="btn btn-lg btn-success pull-right">
+            <?php $this->_('Domain.lookup.order_btn') ?> <i class="fa fa-angle-double-right"></i>
+        </button>
     </div>
-    <button type="submit" class="btn btn-lg btn-success pull-right">
-        <?php $this->_('Domain.lookup.order_btn') ?>  <i class="fa fa-angle-double-right"></i>
-    </button>
-</div>
 </script>
 
 <script type="text/html" id="name_studio_suggestion_tpl">
-<tr>
-    <td>
-        <input type="checkbox" name="domains[]" value="{domain}" id="dom_{domain}">
-    </td>
-    <td>{domain_display}<label for="dom_{domain}"></label></td>
-    <td>
-        <span class="label label-success"><i class="fa fa-check-circle-o"></i> <?php $this->_('Domain.lookup.domain_available') ?></span>
-    </td>
-    <td>
-        <select name="pricing_id[{domain}]" class="form-control input-sm">
-        </select>
-        <input type="hidden" name="group_id[{domain}]" value="3">
-        <input type="hidden" name="meta[{domain}][domain]" value="{domain}">
-    </td>
-</tr>
+    <tr>
+        <td>
+            <input type="checkbox" name="domains[]" value="{domain}" id="dom_{domain}">
+        </td>
+        <td>{domain_display}<label for="dom_{domain}"></label></td>
+        <td>
+            <span class="label label-success"><i class="fa fa-check-circle-o"></i>
+            <?php $this->_('Domain.lookup.domain_available') ?>
+        </span>
+        </td>
+        <td>
+            <select name="pricing_id[{domain}]" class="form-control input-sm">
+            </select>
+            <input type="hidden" name="group_id[{domain}]" value="{group_id}">
+            <input type="hidden" name="meta[{domain}][domain]" value="{domain}">
+        </td>
+    </tr>
 </script>
 
 
 <style type="text/css">
 .name_studio_suggestions {
-  clear: both;  
+    clear: both;
 }
 </style>
 
 <script type="text/javascript">
-$(function(){ 
+$(function() {
     // Override default "select all" checkbox and add some more unneccessary magick
     $("#all_domains").off("click");
     $("#all_domains").on("click", function() {
         $("#configure_domain table:first input[name='domains[]']").not(":disabled").prop('checked', this.checked);
     });
-    
+
     function enableSelectOnPricingChange() {
-        $("#configure_domain select").on("change", function(){
-            getClosestCheckbox(this).prop("checked", true); 
+        $("#configure_domain select").on("change", function() {
+            getClosestCheckbox(this).prop("checked", true);
         });
-        
-        $("#configure_domain").on("click", function(e){
+
+        $("#configure_domain").on("click", function(e) {
             if (e.target.tagName === "TD" || e.target.tagName === "SPAN" || e.target.tagName === "SELECT") {
                 var cbox = getClosestCheckbox(e.target);
                 if (e.target.tagName === "SELECT") {
@@ -87,63 +88,69 @@ $(function(){
             }
         });
     }
-    
+
     function getClosestCheckbox(el) {
         return $(el).closest("tr").find("input[type=checkbox]");
     }
 
     // Handle API Responses
     var toInject = $($("script#name_studio_tpl").html());
-    var rowTpl     = $("#name_studio_suggestion_tpl").html();
-    
-    $.ajax({
-        url: $("#form_namestudio").attr("action"), 
-        data: $("#form_namestudio").serialize(), 
-        type: 'post',
-        dataType: 'json',
-        success: function(data) {
-            formatNameSuggestions(data.result);
-            enableSelectOnPricingChange();
-        },
-        error: function(data) {
-            /*
-            console.log("Error loading NameStudio suggestions");
-            console.log(data);
-            */
-        }
-    });
+    var rowTpl = $("#name_studio_suggestion_tpl").html();
 
-    function formatNameSuggestions(suggestions) {
-        var suggestedCount = 0;
-        
-        // Build up our suggestions to insert to page
-        for (var i=0; i < suggestions.length; i++) {
-            var s = suggestions[i];
-            if (!s.available || !s.terms || !s.terms.length) { continue; }    
-            suggestedCount++;
-            var row = rowTpl.replace(/{domain}/g, s.name);
-            row = $(row.replace(/{domain_display}/g, s.displayName));
+        $.ajax({
+            url: $("#form_namestudio").attr("action"),
+            data: $("#form_namestudio").serialize(),
+            type: 'post',
+            dataType: 'json',
+            success: function(data) {
+                formatNameSuggestions(data);
+                enableSelectOnPricingChange();
+            },
+            error: function(data) {
+                <?php if (Configure::get('System.debug')) { ?>
+                console.error("Error loading NameStudio suggestions");
+                console.error(data);
+                <?php } ?>
+            }
+        });
 
-            for (var ti = 0; ti < s.terms.length; ti++) {
-                $('select', row).append('<option value="'+s.terms[ti][0]+'">'+s.terms[ti][1]+'</option>');     
+        function formatNameSuggestions(data) {
+            var suggestedCount = 0;
+            var suggestions = data.results;
+
+            // Build up our suggestions to insert to page
+            for (var i = 0; i < suggestions.length; i++) {
+                var s = suggestions[i];
+                if (!s.available || !s.terms || !s.terms.length) {
+                    continue;
+                }
+                suggestedCount++;
+                var row = $(
+                    rowTpl.replace(/{domain}/g, s.name)
+                    .replace(/{domain_display}/g, s.displayName)
+                    .replace(/{group_id}/g, data.groupId)
+                );
+
+                for (var ti = 0; ti < s.terms.length; ti++) {
+                    $('select', row).append('<option value="' + s.terms[ti][0] + '">' + s.terms[ti][1] + '</option>');
+                }
+
+                toInject.find("tbody").append(row);
             }
 
-            toInject.find("tbody").append(row);
+            // Insert the suggestions, if we have any
+            if (suggestedCount > 0) {
+                // Insert the suggestions :)
+                if ($("form#configure_domain").length) {
+                    $(toInject).insertAfter("#configure_domain button[type=submit]");
+                } else {
+                    // Lets create a form if it didn't already exist.. But first we need the
+                    var form = $('<form method="post" action="/order/config/index/<?php echo $orderform ?>" id="configure_domain"></form>');
+                    form.append($("#form_namestudio [name=_csrf_token]").clone());
+                    form.append(toInject);
+                    form.insertAfter($(".title").siblings(".container").find(".row:first"));
+                }
+            }
         }
-        
-        // Insert the suggestions, if we have any
-        if (suggestedCount > 0) {
-            // Insert the suggestions :)    
-            if ($("form#configure_domain").length) {
-                $(toInject).insertAfter("#configure_domain button[type=submit]");
-            } else {
-                // Lets create a form if it didn't already exist.. But first we need the 
-                var form = $('<form method="post" action="/order/config/index/<?php echo $orderform ?>" id="configure_domain"></form>');
-                form.append($("#form_namestudio [name=_csrf_token]").clone());
-                form.append(toInject);
-                form.insertAfter($(".title").siblings(".container").find(".row:first"));
-            }            
-        }
-    }
-});
+    });
 </script>
