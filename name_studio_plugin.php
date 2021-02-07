@@ -87,8 +87,8 @@ class NameStudioPlugin extends Plugin {
     
     /**
      * Insert our preconfig_form.pdt to the domain ordering 'preconfig' page
-     * 
-     * @param type $event Blesta event
+     *
+     * @param \Blesta\Core\Util\Events\Common\EventInterface $evt
      * @return void
      */
     public function injectHtml($event) {
@@ -117,11 +117,11 @@ class NameStudioPlugin extends Plugin {
         $view->set('orderform', NameStudioUtil::getOrderFormLabel());
 
         // Don't clobber `body_end`
-        $rval = $event->getReturnVal();
+        $rval = $event->getReturnValue();
         if (!isset($rval['body_end'])) {
             $rval['body_end'] = [];
         }
         $rval['body_end'][] = $view->fetch();
-        return $event->setReturnVal($rval);
+        return $event->setReturnValue($rval);
     }
 }
